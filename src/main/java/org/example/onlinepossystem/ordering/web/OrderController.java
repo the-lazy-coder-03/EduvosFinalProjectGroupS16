@@ -1,0 +1,111 @@
+package org.example.onlinepossystem.ordering.web;
+
+import jakarta.validation.Valid;
+import org.example.onlinepossystem.catalog.api.OrderCatalogResolver;
+import org.example.onlinepossystem.catalog.dto.MenuDTO;
+import org.example.onlinepossystem.ordering.api.OrderOperations;
+import org.example.onlinepossystem.ordering.api.InvalidOrderStatusException;
+import org.example.onlinepossystem.ordering.api.CustomerOrderHistoryReader;
+import org.example.onlinepossystem.ordering.api.CustomerOrderSummary;
+import org.example.onlinepossystem.ordering.dto.OrderRequestDTO;
+import org.example.onlinepossystem.ordering.dto.OrderResponseDTO;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * REST API Controller for Orders.
+ */
+@RestController
+@RequestMapping("/api/orders")
+@org.springframework.validation.annotation.Validated
+public class OrderController {
+
+    private final OrderOperations orderOperations;
+    private final OrderCatalogResolver catalogResolver;
+    private final CustomerOrderHistoryReader customerOrderHistoryReader;
+
+    public OrderController(OrderOperations orderOperations, OrderCatalogResolver catalogResolver,
+            CustomerOrderHistoryReader customerOrderHistoryReader) {
+        this.orderOperations = orderOperations;
+        this.catalogResolver = catalogResolver;
+        this.customerOrderHistoryReader = customerOrderHistoryReader;
+    }
+
+    /**
+     * GET /api/orders/menu?branch=Kenridge
+     * Returns all menu items with prices for the selected branch and available toppings/ingredients.
+     */
+    @GetMapping("/menu")
+    public ResponseEntity<List<MenuDTO>> getMenu(@RequestParam String branch) {
+        return ResponseEntity.ok(catalogResolver.getMenuForBranch(branch));
+    }
+
+    /** GET /api/orders/mine: return the authenticated customer's ten latest linked orders. */
+    @GetMapping("/mine")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<List<CustomerOrderSummary>> getMyOrders(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "A customer-backed account is required to view order history.");
+        }
+        return ResponseEntity.ok(customerOrderHistoryReader.getRecentOrdersForCustomer(
+                authentication.getName(), 10));
+    }
+
+    /**
+     * POST /api/orders
+     * Place a new order.
+     */
+    @PostMapping
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<OrderResponseDTO> placeOrder(
+            @Valid @RequestBody OrderRequestDTO request,
+            @RequestHeader("Idempotency-Key")
+            @jakarta.validation.constraints.Pattern(regexp = "[A-Za-z0-9._:-]{16,128}") String idempotencyKey,
+            Authentication authentication
+    ) {
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "A customer-backed account is required to place an order.");
+        }
+        return ResponseEntity.ok(orderOperations.placeOrderForCustomer(
+                request, authentication.getName(), idempotencyKey));
+    }
+
+    /**
+     * GET /api/orders?branch=Kenridge
+     */
+    @GetMapping
+    public ResponseEntity<List<OrderResponseDTO>> getOrdersByBranch(@RequestParam String branch) {
+        return ResponseEntity.ok(orderOperations.getOrdersByBranch(branch));
+    }
+
+    /**
+     * GET /api/orders/pending?branch=Kenridge
+     */
+    @GetMapping("/pending")
+    public ResponseEntity<List<OrderResponseDTO>> getPendingOrdersByBranch(@RequestParam String branch) {
+        return ResponseEntity.ok(orderOperations.getPendingOrdersByBranch(branch));
+    }
+
+    /**
+     * PUT /api/orders/{id}/status
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateOrderStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request) {
+
+        try {
+            return ResponseEntity.ok(orderOperations.updateOrderStatus(id, request.get("status")));
+        } catch (InvalidOrderStatusException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
+}

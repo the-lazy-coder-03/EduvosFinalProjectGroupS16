@@ -1,0 +1,134 @@
+package org.example.onlinepossystem.customer.service;
+
+import org.example.onlinepossystem.customer.api.PasswordResetOperations;
+import org.example.onlinepossystem.customer.api.AccountCredentialsChanged;
+import org.example.onlinepossystem.customer.notification.PasswordResetNotifier;
+import org.example.onlinepossystem.customer.persistence.AccountBootstrapStore;
+import org.example.onlinepossystem.notification.email.NotificationDeliveryException;
+import org.example.onlinepossystem.security.api.PasswordPolicy;
+import org.example.onlinepossystem.security.api.RateLimiter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.HexFormat;
+import java.util.Locale;
+
+@Service
+public class PasswordResetService implements PasswordResetOperations {
+
+    public static final String GENERIC_RESET_MESSAGE = "If that email exists, a reset link has been sent.";
+
+    private static final Logger logger = LoggerFactory.getLogger(PasswordResetService.class);
+    private static final Duration RESET_EXPIRY = Duration.ofMinutes(30);
+    private static final Duration FORGOT_PASSWORD_WINDOW = Duration.ofMinutes(15);
+    private static final int MAX_FORGOT_PASSWORD_ATTEMPTS = 5;
+
+    private final AccountBootstrapStore accounts;
+    private final PasswordEncoder passwordEncoder;
+    private final PasswordResetNotifier passwordResetNotifier;
+    private final RateLimiter rateLimiter;
+    private final SecureRandom secureRandom;
+    private final PasswordPolicy passwordPolicy;
+    private final ApplicationEventPublisher events;
+
+    public PasswordResetService(
+            AccountBootstrapStore accounts,
+            PasswordEncoder passwordEncoder,
+            PasswordResetNotifier passwordResetNotifier,
+            RateLimiter rateLimiter,
+            SecureRandom secureRandom,
+            PasswordPolicy passwordPolicy,
+            ApplicationEventPublisher events
+    ) {
+        this.accounts = accounts;
+        this.passwordEncoder = passwordEncoder;
+        this.passwordResetNotifier = passwordResetNotifier;
+        this.rateLimiter = rateLimiter;
+        this.secureRandom = secureRandom;
+        this.passwordPolicy = passwordPolicy;
+        this.events = events;
+    }
+
+    @Transactional
+    @Override
+    public String requestReset(String email, String clientIp) {
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+        String ipRateLimitKey = "forgot-password:ip:" + clientIp;
+        String accountRateLimitKey = "forgot-password:account:"
+                + hashToken(normalizedEmail.isBlank() ? "<empty>" : normalizedEmail);
+
+        if (!rateLimiter.isAllowed(ipRateLimitKey, MAX_FORGOT_PASSWORD_ATTEMPTS * 2, FORGOT_PASSWORD_WINDOW)
+                || !rateLimiter.isAllowed(accountRateLimitKey, MAX_FORGOT_PASSWORD_ATTEMPTS, FORGOT_PASSWORD_WINDOW)) {
+            logger.warn("Rate limited forgot-password request from IP {}", clientIp);
+            return GENERIC_RESET_MESSAGE;
+        }
+
+        logger.info("Password reset requested from IP {}", clientIp);
+
+        String rawToken = generateToken();
+        String tokenHash = hashToken(rawToken);
+        accounts.createReset(normalizedEmail, tokenHash, LocalDateTime.now().plus(RESET_EXPIRY)).ifPresent(recipient -> {
+            try {
+                passwordResetNotifier.sendResetLink(recipient, rawToken);
+            } catch (NotificationDeliveryException ex) {
+                accounts.cancelReset(tokenHash);
+                logger.warn("Password reset email could not be delivered");
+            }
+        });
+
+        return GENERIC_RESET_MESSAGE;
+    }
+
+    @Transactional
+    @Override
+    public void resetPassword(String token, String newPassword, String confirmPassword) {
+        if (newPassword == null || !newPassword.equals(confirmPassword)) {
+            throw new IllegalArgumentException("Passwords do not match.");
+        }
+        resetPassword(token, newPassword);
+    }
+
+    @Transactional
+    @Override
+    public void resetPassword(String token, String newPassword) {
+        if (!passwordPolicy.isValid(newPassword)) {
+            throw new IllegalArgumentException(passwordPolicy.validationMessage());
+        }
+
+        String username = accounts.consumeReset(hashToken(token), passwordEncoder.encode(newPassword))
+                .orElseThrow(() -> new IllegalArgumentException("Reset link is invalid or has expired."));
+        events.publishEvent(new AccountCredentialsChanged(username));
+        logger.info("Password reset completed");
+    }
+
+    private String generateToken() {
+        byte[] bytes = new byte[48];
+        secureRandom.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String hashToken(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("Reset link is invalid or has expired.");
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is not available.", ex);
+        }
+    }
+
+}

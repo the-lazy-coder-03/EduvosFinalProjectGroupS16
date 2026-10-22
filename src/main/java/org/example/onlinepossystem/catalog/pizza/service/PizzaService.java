@@ -1,0 +1,186 @@
+package org.example.onlinepossystem.catalog.pizza.service;
+
+import org.example.onlinepossystem.catalog.pizza.dto.PizzaCard;
+import org.example.onlinepossystem.catalog.pizza.dto.PizzaBaseOptionItem;
+import org.example.onlinepossystem.catalog.pizza.dto.PizzaCardRow;
+import org.example.onlinepossystem.catalog.pizza.dto.PizzaDefaultToppingRow;
+import org.example.onlinepossystem.catalog.pizza.dto.PizzaCategorySplit;
+import org.example.onlinepossystem.catalog.pizza.dto.PizzaDetail;
+import org.example.onlinepossystem.catalog.pizza.dto.PizzaSizePriceRow;
+import org.example.onlinepossystem.catalog.pizza.dto.PriceQuoteResponse;
+import org.example.onlinepossystem.catalog.pizza.dto.SizePrice;
+import org.example.onlinepossystem.catalog.pizza.dto.ToppingItem;
+import org.example.onlinepossystem.catalog.pizza.dto.ToppingPrice;
+import org.example.onlinepossystem.catalog.pizza.dto.ToppingRow;
+import org.example.onlinepossystem.catalog.pizza.repository.PizzaReadRepository;
+import org.example.onlinepossystem.catalog.entity.BranchPizzaBaseOptionPrice;
+import org.example.onlinepossystem.catalog.repository.BranchPizzaBaseOptionPriceRepository;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+@Service
+public class PizzaService {
+    private final PizzaReadRepository pizzaReadRepository;
+    private final BranchPizzaBaseOptionPriceRepository baseOptionPriceRepository;
+
+    public PizzaService(
+            PizzaReadRepository pizzaReadRepository,
+            BranchPizzaBaseOptionPriceRepository baseOptionPriceRepository
+    ) {
+        this.pizzaReadRepository = pizzaReadRepository;
+        this.baseOptionPriceRepository = baseOptionPriceRepository;
+    }
+
+    public PizzaCategorySplit listPizzasByCategory(Integer branchId) {
+        List<PizzaCardRow> favouriteRows = pizzaReadRepository.findPizzaCardsByBranchAndCategory(branchId, 1);
+        List<PizzaCardRow> supremeRows = pizzaReadRepository.findPizzaCardsByBranchAndCategory(branchId, 2);
+        List<Integer> pizzaIds = Stream.concat(favouriteRows.stream(), supremeRows.stream())
+                .map(PizzaCardRow::pizzaId)
+                .distinct()
+                .toList();
+        Map<Integer, List<String>> toppingsByPizza = pizzaIds.isEmpty()
+                ? Map.of()
+                : pizzaReadRepository.findDefaultToppingsForPizzas(pizzaIds).stream()
+                .collect(Collectors.groupingBy(
+                        PizzaDefaultToppingRow::pizzaId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(PizzaDefaultToppingRow::name, Collectors.toList())
+                ));
+
+        List<PizzaCard> favouritePizzas = mapPizzaCards(favouriteRows, toppingsByPizza);
+        List<PizzaCard> supremePizzas = mapPizzaCards(supremeRows, toppingsByPizza);
+        return new PizzaCategorySplit(favouritePizzas, supremePizzas);
+    }
+
+    public PizzaDetail getPizzaDetail(Integer branchId, Integer pizzaId, Integer sizeCmParam) {
+        List<PizzaSizePriceRow> sizeRows = pizzaReadRepository.findSizePricesForPizza(branchId, pizzaId);
+        if (sizeRows.isEmpty()) {
+            throw new PizzaNotFoundException("Pizza not found for branch");
+        }
+
+        String name = sizeRows.get(0).name();
+        List<SizePrice> availableSizes = sizeRows.stream()
+                .map(row -> new SizePrice(row.sizeCm(), toBigDecimal(row.basePrice())))
+                .toList();
+
+        Integer selectedSizeCm = sizeCmParam != null ? sizeCmParam : sizeRows.get(0).sizeCm();
+        SizePrice selectedSize = availableSizes.stream()
+                .filter(size -> Objects.equals(size.sizeCm(), selectedSizeCm))
+                .findFirst()
+                .orElseThrow(() -> new InvalidPizzaSelectionException("Size not available for pizza"));
+
+        List<ToppingRow> toppingRows = pizzaReadRepository.findToppingsForPizzaAndSize(branchId, pizzaId, selectedSizeCm);
+
+        List<ToppingItem> allToppings = toppingRows.stream()
+                .map(row -> new ToppingItem(row.toppingId(), row.name(), null))
+                .toList();
+
+        List<ToppingItem> defaultToppings = toppingRows.stream()
+                .filter(row -> row.defaultSortOrder() != null)
+                .sorted(Comparator.comparing(ToppingRow::defaultSortOrder))
+                .map(row -> new ToppingItem(row.toppingId(), row.name(), Boolean.TRUE.equals(row.removable())))
+                .toList();
+
+        List<ToppingPrice> extraPrices = toppingRows.stream()
+                .map(row -> new ToppingPrice(row.toppingId(), toBigDecimal(row.extraPrice())))
+                .toList();
+
+        List<PizzaBaseOptionItem> baseOptions = baseOptionPriceRepository
+                .findAvailableOptions(branchId, selectedSizeCm)
+                .stream()
+                .map(price -> new PizzaBaseOptionItem(
+                        price.getPizzaBaseOption().getId(),
+                        price.getPizzaBaseOption().getName(),
+                        toBigDecimal(price.getPrice())
+                ))
+                .toList();
+
+        return new PizzaDetail(
+                pizzaId,
+                name,
+                availableSizes,
+                selectedSize.basePrice(),
+                defaultToppings,
+                allToppings,
+                extraPrices,
+                baseOptions
+        );
+    }
+
+    public PriceQuoteResponse quotePrice(
+            Integer branchId,
+            Integer pizzaId,
+            Integer sizeCm,
+            List<Integer> selectedToppingIds,
+            Integer pizzaBaseOptionId
+    ) {
+        Double basePriceRaw = pizzaReadRepository.findBasePrice(branchId, pizzaId, sizeCm)
+                .orElseThrow(() -> new PizzaNotFoundException("Price not found for pizza and size"));
+
+        List<Integer> uniqueToppings = (selectedToppingIds == null ? List.<Integer>of() : selectedToppingIds)
+                .stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Double toppingsTotalRaw = uniqueToppings.isEmpty()
+                ? 0.0
+                : pizzaReadRepository.sumExtraPrices(branchId, pizzaId, sizeCm, uniqueToppings);
+
+        BigDecimal basePrice = toBigDecimal(basePriceRaw);
+        BigDecimal toppingsTotal = toBigDecimal(toppingsTotalRaw);
+        BigDecimal baseOptionTotal = selectedBaseOptionPrice(branchId, sizeCm, pizzaBaseOptionId);
+        BigDecimal total = basePrice.add(toppingsTotal).add(baseOptionTotal);
+
+        return new PriceQuoteResponse(pizzaId, sizeCm, basePrice, toppingsTotal, baseOptionTotal, total);
+    }
+
+    private BigDecimal selectedBaseOptionPrice(Integer branchId, Integer sizeCm, Integer pizzaBaseOptionId) {
+        if (pizzaBaseOptionId == null) {
+            return BigDecimal.ZERO;
+        }
+        return baseOptionPriceRepository.findAvailableOptions(branchId, sizeCm).stream()
+                .filter(price -> Objects.equals(price.getPizzaBaseOption().getId(), pizzaBaseOptionId))
+                .map(BranchPizzaBaseOptionPrice::getPrice)
+                .map(this::toBigDecimal)
+                .findFirst()
+                .orElseThrow(() -> new InvalidPizzaSelectionException("Pizza base option is not available for this branch and size"));
+    }
+
+    private BigDecimal toBigDecimal(Double value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        return BigDecimal.valueOf(value);
+    }
+
+    private List<PizzaCard> mapPizzaCards(List<PizzaCardRow> rows, Map<Integer, List<String>> toppingsByPizza) {
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+        Map<Integer, PizzaCard> cards = new LinkedHashMap<>();
+        for (PizzaCardRow row : rows) {
+            if (!cards.containsKey(row.pizzaId())) {
+                cards.put(row.pizzaId(), new PizzaCard(
+                        row.pizzaId(),
+                        row.name(),
+                        row.pizzaCategoryId(),
+                        row.pizzaCategoryName(),
+                        row.sizeCm(),
+                        toBigDecimal(row.basePrice()),
+                        toppingsByPizza.getOrDefault(row.pizzaId(), List.of())
+                ));
+            }
+        }
+        return new ArrayList<>(cards.values());
+    }
+}

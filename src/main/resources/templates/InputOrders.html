@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <title>POS — Kenridge Orders</title>
+    <style>
+        body {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+            background-color: var(--color-page);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            box-sizing: border-box;
+            background-color: var(--color-surface);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 4px 20px rgba(var(--color-text-rgb),0.1);
+            text-align: center;
+        }
+
+        h2 {
+            color: var(--color-blue);
+        }
+
+        .branchLabel {
+            font-weight: bold;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: var(--color-blue);
+        }
+
+        /* ========================
+           ORDER QUEUE / DASHBOARD
+        ======================== */
+        .orderList {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+        }
+
+        .orderItem {
+            background-color: var(--color-blue-tint);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 1.1rem;
+        }
+
+        .orderMain {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .orderActions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .orderItem span.status {
+            font-weight: bold;
+            font-size: 0.95rem;
+            padding: 5px 10px;
+            border-radius: 8px;
+            color: var(--color-surface);
+        }
+
+        .status.Pending { background-color: var(--color-blue); }   /* blue */
+        .orderItem span.status.Preparing { background-color: var(--color-warning); color: var(--color-text); } /* orange */
+        .status.Completed { background-color: var(--color-success); } /* green */
+        .status.Rejected { background-color: var(--color-error); }  /* red */
+
+        .orderItem button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1.1rem;
+            background-color: var(--color-blue);
+            color: var(--color-surface);
+            transition: all 0.2s ease;
+        }
+
+        .orderItem button:hover {
+            background-color: var(--color-blue);
+        }
+
+        .liveStatus {
+            color: var(--color-blue-dark);
+            font-size: 0.9rem;
+            margin-top: -10px;
+            margin-bottom: 12px;
+        }
+
+        /* ========================
+           SINGLE ORDER SCREEN
+        ======================== */
+        .orderCard {
+            background-color: var(--color-blue-tint);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: left;
+            font-size: 1.1rem;
+        }
+
+        .topButtons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 18px 30px;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            font-size: 1.2rem;
+            margin: 5px;
+        }
+
+        .acceptBtn {
+            background-color: var(--color-blue);
+            color: var(--color-surface);
+        }
+
+        .acceptBtn:hover {
+            background-color: var(--color-blue);
+        }
+
+        .rejectBtn {
+            background-color: var(--color-border);
+        }
+
+        .rejectBtn:hover {
+            background-color: var(--color-disabled);
+        }
+
+        .homeBtn {
+            background-color: var(--color-success);
+        }
+
+        .homeBtn:hover {
+            background-color: var(--color-success);
+        }
+
+        .backBtn {
+            background-color: var(--color-red-soft);
+        }
+
+        .backBtn:hover {
+            background-color: var(--color-red-light);
+        }
+
+        /* ========================
+           SECTIONS
+        ======================== */
+        #queueSection { display: none; }
+        #singleOrderSection { display: none; }
+
+        @media (max-width: 600px) {
+            body { display: block; }
+            .container {
+                width: 100%;
+                min-height: 100dvh;
+                max-width: none;
+                margin: 0;
+                padding: 16px;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            h2 { font-size: 1.4rem; }
+            .orderMain { align-items: flex-start; flex-wrap: wrap; }
+            .orderItem, .orderCard { overflow-wrap: anywhere; }
+            .topButtons { gap: 8px; }
+            .topButtons button { flex: 1; min-width: 0; }
+            button, .orderItem button { min-height: 44px; padding: 12px 14px; font-size: 1rem; }
+            .orderActions button { flex: 1 1 130px; }
+        }
+
+    </style>
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+</head>
+<body>
+
+<div class="container">
+    <!-- ORDER QUEUE / DASHBOARD -->
+    <div id="queueSection" th:style="${adminMode == true} ? 'display:block;' : 'display:none;'">
+        <div class="branchLabel" id="branchLabelQueue"></div>
+        <h2>Online Orders Queue</h2>
+        <div id="liveStatus" class="liveStatus"></div>
+        <ul id="orderListQueue" class="orderList"></ul>
+        <button id="processNextOrderButton" type="button" style="padding:15px 30px;font-size:1.2rem;background:var(--color-blue);color:var(--color-surface);border:none;border-radius:12px;margin-top:20px;">Process Next Order</button>
+    </div>
+
+    <!-- SINGLE ORDER SCREEN -->
+    <div id="singleOrderSection">
+        <div class="branchLabel" id="branchLabelSingle"></div>
+        <h2>Processing Order</h2>
+        <div class="topButtons">
+            <button class="homeBtn" id="ordersHomeButton" type="button">Home</button>
+            <button class="backBtn" id="previousOrderButton" type="button">Previous Order</button>
+        </div>
+        <div id="currentOrderSingle"></div>
+    </div>
+</div>
+
+<script src="/js/stomp-client.js"></script>
+<script src="/js/pos-order-renderer.js"></script>
+<script th:inline="javascript" th:attr="nonce=${cspNonce}">
+    const ADMIN_MODE = /*[[${adminMode ?: false}]]*/ false;
+    const ADMIN_BRANCH_ID = /*[[${adminBranchId}]]*/ null;
+    const ADMIN_BRANCH_NAME = /*[[${adminBranchName}]]*/ null;
+    let currentBranch = '';
+    let branchOrders = [];
+    let orderIndex = 0;
+    let processedOrders = [];
+    let liveStompClient = null;
+    let liveReconnectTimerId = null;
+    let liveReconnectDelayMs = 1000;
+    let liveReconnectEnabled = false;
+
+    // API BASE URL
+    const API_BASE_URL = '/api';
+    const ADMIN_ORDERS_URL = `${API_BASE_URL}/admin/orders`;
+    const ADMIN_ORDER_TOPIC = '/topic/admin/orders';
+    document.getElementById('processNextOrderButton')?.addEventListener('click', processNextOrder);
+    document.getElementById('ordersHomeButton')?.addEventListener('click', goHome);
+    document.getElementById('previousOrderButton')?.addEventListener('click', goBack);
+
+    function setLiveStatus(message) {
+        const el = document.getElementById('liveStatus');
+        if (el) el.innerText = ADMIN_MODE ? message : '';
+    }
+
+    function startAdminOrdersPage() {
+        currentBranch = ADMIN_BRANCH_NAME || 'All Branches';
+        document.getElementById('branchLabelQueue').innerText = `Admin: ${currentBranch}`;
+        fetchBranchOrders().then(() => {
+            processedOrders = [];
+            showQueue();
+            connectOrderStream();
+        });
+    }
+
+    // FETCH ORDERS FROM BACKEND
+    async function fetchBranchOrders() {
+        try {
+            const url = ADMIN_MODE
+                ? ADMIN_ORDERS_URL
+                : `${API_BASE_URL}/orders?branch=${encodeURIComponent(currentBranch)}`;
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Orders request failed with status ${response.status}`);
+            }
+            branchOrders = await response.json();
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+            branchOrders = [];
+            setLiveStatus('Could not load orders. Retrying with the live connection.');
+        }
+    }
+
+    function upsertOrder(order) {
+        if (!order || !order.id) return;
+
+        const existingIndex = branchOrders.findIndex(o => o.id === order.id);
+        if (existingIndex === -1) {
+            branchOrders.unshift(order);
+        } else {
+            branchOrders[existingIndex] = order;
+        }
+
+        if (document.getElementById('queueSection').style.display !== 'none') {
+            showQueue();
+        }
+
+        const currentOrder = branchOrders[orderIndex];
+        if (currentOrder && currentOrder.id === order.id && document.getElementById('singleOrderSection').style.display !== 'none') {
+            showSingleOrder();
+        }
+    }
+
+    function connectOrderStream() {
+        if (!ADMIN_MODE) return;
+
+        if (liveStompClient) {
+            liveReconnectEnabled = false;
+            liveStompClient.disconnect();
+        }
+        if (liveReconnectTimerId) {
+            clearTimeout(liveReconnectTimerId);
+            liveReconnectTimerId = null;
+        }
+
+        setLiveStatus('Connecting to live order updates...');
+        liveReconnectEnabled = true;
+        liveStompClient = createSimpleStompClient({
+            onConnect: () => {
+                liveReconnectDelayMs = 1000;
+                setLiveStatus('Live order updates connected.');
+                const topic = ADMIN_BRANCH_ID ? `/topic/admin/branches/${ADMIN_BRANCH_ID}/orders` : ADMIN_ORDER_TOPIC;
+                liveStompClient.subscribe(topic, frame => {
+                    try {
+                        const payload = JSON.parse(frame.body);
+                        const order = payload.order || payload;
+                        upsertOrder(order);
+                        setLiveStatus(`Order update received: #${order.id}`);
+                    } catch (error) {
+                        console.error('Could not read live order event:', error);
+                    }
+                });
+            },
+            onDisconnect: () => {
+                if (!liveReconnectEnabled) return;
+                setLiveStatus('Live updates disconnected. Reconnecting...');
+                liveReconnectTimerId = setTimeout(connectOrderStream, liveReconnectDelayMs);
+                liveReconnectDelayMs = Math.min(liveReconnectDelayMs * 2, 15000);
+            },
+            onError: error => {
+                console.error('Live order connection error:', error);
+            }
+        });
+        liveStompClient.connect();
+    }
+
+    async function updateOrderStatus(orderId, status) {
+        try {
+            const url = ADMIN_MODE
+                ? `${ADMIN_ORDERS_URL}/${orderId}/status`
+                : `${API_BASE_URL}/orders/${orderId}/status`;
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', [document.querySelector('meta[name="_csrf_header"]').content]: document.querySelector('meta[name="_csrf"]').content },
+                body: JSON.stringify({ status })
+            });
+
+            if (!response.ok) {
+                alert('Failed to update order status');
+                return;
+            }
+            const updatedOrder = await response.json();
+            upsertOrder(updatedOrder);
+            if (!ADMIN_MODE) {
+                await fetchBranchOrders();
+            }
+            showQueue();
+            const idx = branchOrders.findIndex(o => o.id === orderId);
+            if (idx !== -1) {
+                orderIndex = idx;
+            }
+        } catch (error) {
+            console.error('Error updating order:', error);
+            alert('Error connecting to server');
+        }
+    }
+
+    // SHOW QUEUE / DASHBOARD WITH STATUS
+    function showQueue() {
+        const list = document.getElementById('orderListQueue');
+        list.innerHTML = '';
+        if(branchOrders.length === 0) {
+            list.innerHTML = '<li>No orders for this branch.</li>';
+            return;
+        }
+
+        branchOrders.forEach(order => {
+            list.appendChild(PosOrderRenderer.queueRow(order, {
+                showBranch: ADMIN_MODE,
+                onStatusChange: status => updateOrderStatus(order.id, status)
+            }));
+        });
+    }
+
+    // GO TO SINGLE ORDER SCREEN
+    function processNextOrder() {
+        const nextIndex = branchOrders.findIndex(o => (o.status === 'Pending' || o.status === 'created'));
+        if(nextIndex === -1) return; // no pending orders
+        orderIndex = nextIndex;
+        document.getElementById('queueSection').style.display = 'none';
+        document.getElementById('singleOrderSection').style.display = 'block';
+        document.getElementById('branchLabelSingle').innerText = `Branch: ${currentBranch}`;
+        showSingleOrder();
+    }
+
+    // SHOW SINGLE ORDER
+    function showSingleOrder() {
+        const orderDiv = document.getElementById('currentOrderSingle');
+        orderDiv.innerHTML = '';
+
+        if(branchOrders.length === 0) {
+            orderDiv.innerHTML = '<p>No orders to process.</p>';
+            return;
+        }
+
+        const order = branchOrders[orderIndex];
+
+        orderDiv.appendChild(PosOrderRenderer.orderCard(order, {
+            onStatusChange: status => updateOrderStatus(order.id, status).then(showSingleOrder)
+        }));
+    }
+
+    async function prepareOrder() {
+        const order = branchOrders[orderIndex];
+        await updateOrderStatus(order.id, 'Preparing');
+        showSingleOrder();
+    }
+
+    async function completeOrder() {
+        const order = branchOrders[orderIndex];
+        await updateOrderStatus(order.id, 'Completed');
+        showSingleOrder();
+    }
+
+
+    // BACK TO PREVIOUS ORDER
+    function goBack() {
+        const prevIndex = processedOrders.length - 1;
+        if(prevIndex < 0) return;
+        orderIndex = branchOrders.findIndex(o => o.id === processedOrders[prevIndex].id);
+        processedOrders.pop();
+        showSingleOrder();
+    }
+
+    // GO HOME TO QUEUE SCREEN
+    async function goHome() {
+        // Refresh orders from backend when returning to dashboard
+        await fetchBranchOrders();
+        document.getElementById('singleOrderSection').style.display = 'none';
+        document.getElementById('queueSection').style.display = 'block';
+        showQueue();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        if (ADMIN_MODE) {
+            startAdminOrdersPage();
+        }
+    });
+</script>
+
+</body>
+</html>

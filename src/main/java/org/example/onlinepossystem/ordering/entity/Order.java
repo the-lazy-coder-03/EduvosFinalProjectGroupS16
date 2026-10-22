@@ -1,0 +1,167 @@
+package org.example.onlinepossystem.ordering.entity;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "customer_order")
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "order_id")
+    private Long id;
+
+    @Column(name = "customer_id")
+    private Long customerId;
+
+    @Column(name = "idempotency_key", length = 128)
+    private String idempotencyKey;
+
+    @Column(name = "branch_id", nullable = false)
+    private Integer branchId;
+
+    @Column(name = "order_type", nullable = false)
+    private String orderType = "pickup";
+
+    @Column(nullable = false)
+    private String status = "Pending";
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "customer_name")
+    private String customerName;
+
+    @Column
+    private String phone;
+
+    @Column(name = "house_number")
+    private String houseNumber;
+
+    @Column(name = "street")
+    private String street;
+
+    @Column(name = "area")
+    private String area;
+
+    @Column(name = "city")
+    private String city;
+
+    @Column(name = "postal_code")
+    private String postalCode;
+
+    @Column(name = "complex_name")
+    private String complexName;
+
+    @Column(name = "google_place_id")
+    private String googlePlaceId;
+
+    @Column(name = "formatted_address", columnDefinition = "TEXT")
+    private String formattedAddress;
+
+    @Column(name = "latitude", precision = 9, scale = 6)
+    private BigDecimal latitude;
+
+    @Column(name = "longitude", precision = 10, scale = 6)
+    private BigDecimal longitude;
+
+    @Column(name = "province")
+    private String province;
+
+    @Column(name = "country")
+    private String country;
+
+    @Column(name = "gate_access_code", length = 64)
+    private String gateAccessCode;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderMenuItem> menuItems = new ArrayList<>();
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderPizzaItem> pizzaItems = new ArrayList<>();
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderSpecialItem> specialItems = new ArrayList<>();
+
+    public Order() {}
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public Integer getBranchId() { return branchId; }
+    public void setBranchId(Integer branchId) { this.branchId = branchId; }
+    public Long getCustomerId() { return customerId; }
+    public void setCustomerId(Long customerId) { this.customerId = customerId; }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
+    public String getOrderType() { return orderType; }
+    public void setOrderType(String orderType) { this.orderType = orderType; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getCustomerName() { return customerName; }
+    public void setCustomerName(String customerName) { this.customerName = customerName; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getHouseNumber() { return houseNumber; }
+    public void setHouseNumber(String houseNumber) { this.houseNumber = houseNumber; }
+    public String getStreet() { return street; }
+    public void setStreet(String street) { this.street = street; }
+    public String getArea() { return area; }
+    public void setArea(String area) { this.area = area; }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+    public String getPostalCode() { return postalCode; }
+    public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
+    public String getComplexName() { return complexName; }
+    public void setComplexName(String complexName) { this.complexName = complexName; }
+    public String getGooglePlaceId() { return googlePlaceId; }
+    public void setGooglePlaceId(String googlePlaceId) { this.googlePlaceId = googlePlaceId; }
+    public String getFormattedAddress() { return formattedAddress; }
+    public void setFormattedAddress(String formattedAddress) { this.formattedAddress = formattedAddress; }
+    public BigDecimal getLatitude() { return latitude; }
+    public void setLatitude(BigDecimal latitude) { this.latitude = latitude; }
+    public BigDecimal getLongitude() { return longitude; }
+    public void setLongitude(BigDecimal longitude) { this.longitude = longitude; }
+    public String getProvince() { return province; }
+    public void setProvince(String province) { this.province = province; }
+    public String getCountry() { return country; }
+    public void setCountry(String country) { this.country = country; }
+    public String getGateAccessCode() { return gateAccessCode; }
+    public void setGateAccessCode(String gateAccessCode) { this.gateAccessCode = gateAccessCode; }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+    public List<OrderMenuItem> getMenuItems() { return menuItems; }
+    public void setMenuItems(List<OrderMenuItem> menuItems) { this.menuItems = menuItems; }
+    public void addMenuItem(OrderMenuItem item) {
+        menuItems.add(item);
+        item.setOrder(this);
+    }
+    public List<OrderPizzaItem> getPizzaItems() { return pizzaItems; }
+    public void setPizzaItems(List<OrderPizzaItem> pizzaItems) { this.pizzaItems = pizzaItems; }
+    public void addPizzaItem(OrderPizzaItem item) {
+        pizzaItems.add(item);
+        item.setOrder(this);
+    }
+    public List<OrderSpecialItem> getSpecialItems() { return specialItems; }
+    public void setSpecialItems(List<OrderSpecialItem> specialItems) { this.specialItems = specialItems; }
+    public void addSpecialItem(OrderSpecialItem item) {
+        specialItems.add(item);
+        item.setOrder(this);
+    }
+}

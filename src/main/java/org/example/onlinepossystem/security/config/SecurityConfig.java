@@ -1,0 +1,228 @@
+package org.example.onlinepossystem.security.config;
+
+import jakarta.servlet.http.HttpServletResponse;
+import org.example.onlinepossystem.security.JwtAuthenticationFilter;
+import org.example.onlinepossystem.security.AccountPrincipalRefreshFilter;
+import org.example.onlinepossystem.security.LoggingAuthenticationFailureHandler;
+import org.example.onlinepossystem.security.LoginRateLimitFilter;
+import org.example.onlinepossystem.security.SecurityHeadersFilter;
+import org.example.onlinepossystem.security.AbuseProtectionFilter;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+
+@Configuration
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    private final UserDetailsService userDetailsService;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final LoginRateLimitFilter loginRateLimitFilter;
+    private final LoggingAuthenticationFailureHandler authenticationFailureHandler;
+    private final AuthenticationSuccessHandler authenticationSuccessHandler;
+    private final SecurityHeadersFilter securityHeadersFilter;
+    private final AbuseProtectionFilter abuseProtectionFilter;
+
+    public SecurityConfig(UserDetailsService userDetailsService,
+                          JwtAuthenticationFilter jwtAuthenticationFilter,
+                          LoginRateLimitFilter loginRateLimitFilter,
+                          SecurityHeadersFilter securityHeadersFilter,
+                          AbuseProtectionFilter abuseProtectionFilter,
+                          LoggingAuthenticationFailureHandler authenticationFailureHandler,
+                          @Qualifier("roleAwareAuthenticationSuccessHandler") AuthenticationSuccessHandler authenticationSuccessHandler) {
+        this.userDetailsService = userDetailsService;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.loginRateLimitFilter = loginRateLimitFilter;
+        this.securityHeadersFilter = securityHeadersFilter;
+        this.abuseProtectionFilter = abuseProtectionFilter;
+        this.authenticationFailureHandler = authenticationFailureHandler;
+        this.authenticationSuccessHandler = authenticationSuccessHandler;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    @Primary
+    public PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    @Bean("staffPasswordEncoder")
+    public PasswordEncoder staffPasswordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
+        // Special case for admin password from .env which might not be BCrypt encoded
+        // But for simplicity, we'll use NoOpPasswordEncoder for the admin ONLY if it matches the .env password
+        // Or better, just don't encode it in UserDetailsService if it's the admin.
+        // Spring Security 5+ requires an ID for PasswordEncoder, e.g. {bcrypt}, {noop}.
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
+    }
+
+    @Bean
+    public SecurityContextRepository securityContextRepository() {
+        return new HttpSessionSecurityContextRepository();
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration() {
+        var registration = new FilterRegistrationBean<>(jwtAuthenticationFilter);
+        registration.setEnabled(false); // Runs only inside Spring Security, after context loading.
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<SecurityHeadersFilter> securityHeadersFilterRegistration() {
+        var registration = new FilterRegistrationBean<>(securityHeadersFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<AbuseProtectionFilter> abuseProtectionFilterRegistration() {
+        var registration = new FilterRegistrationBean<>(abuseProtectionFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(
+            HttpSecurity http,
+            SecurityContextRepository securityContextRepository
+    ) throws Exception {
+        http
+                .cors(org.springframework.security.config.Customizer.withDefaults())
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(abuseProtectionFilter, CsrfFilter.class)
+                .addFilterBefore(securityHeadersFilter, CsrfFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, CsrfFilter.class)
+                .addFilterAfter(new AccountPrincipalRefreshFilter(userDetailsService), JwtAuthenticationFilter.class)
+                .securityContext(context -> context
+                        .securityContextRepository(securityContextRepository)
+                )
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(request -> Boolean.TRUE.equals(
+                                request.getAttribute(JwtAuthenticationFilter.AUTHENTICATED_BEARER)))
+                        .ignoringRequestMatchers(request -> "POST".equals(request.getMethod())
+                                && java.util.Set.of("/api/auth/login", "/api/auth/register", "/api/auth/forgot-password",
+                                        "/api/auth/reset-password", "/api/staff/login").contains(request.getRequestURI().substring(request.getContextPath().length()))
+                                && request.getContentType() != null
+                                && request.getContentType().split(";", 2)[0].trim()
+                                        .equalsIgnoreCase("application/json"))
+                )
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.sameOrigin())
+                        .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
+                        .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).preload(true).maxAgeInSeconds(31536000))
+                )
+                .authorizeHttpRequests(auth -> auth
+                        // Protect order and profile pages
+                        .requestMatchers("/order", "/checkout", "/orders/*/confirmation", "/profile/edit").hasRole("USER")
+                        .requestMatchers("/profile/update").hasRole("USER")
+                        .requestMatchers("/driver", "/api/driver/**").hasRole("DRIVER")
+                        .requestMatchers("/admin/login").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                        // Protect sensitive API endpoints
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/staff/create").hasRole("SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/orders").hasRole("USER")
+                        .requestMatchers(HttpMethod.GET, "/api/orders/menu").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/orders/mine").hasRole("USER")
+                        .requestMatchers(HttpMethod.GET, "/api/me").hasRole("USER")
+                        .requestMatchers("/api/orders", "/api/orders/**").hasRole("ADMIN")
+                        .requestMatchers("/input-orders", "/orders", "/InputOrders", "/InputOrders.html").hasRole("ADMIN")
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
+                        .requestMatchers("/api/auth/forgot-password").permitAll()
+                        .requestMatchers("/api/auth/reset-password").permitAll()
+                        .requestMatchers("/api/staff/login").permitAll()
+                        .requestMatchers("/api/branches/**").permitAll()
+                        .requestMatchers("/api/full-address").permitAll()
+
+                        // Public pages + static resources
+                        .requestMatchers(
+                                "/",
+                                "/home",
+                                "/menu",
+                                "/menu/**",
+                                "/login",
+                                "/admin/login",
+                                "/register",
+                                "/forgot-password",
+                                "/reset-password",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**",
+                                "/webjars/**"
+                        ).permitAll()
+
+                        // All other requests authenticated
+                        .anyRequest().authenticated()
+                )
+                .exceptionHandling(exceptions -> exceptions
+                        .accessDeniedHandler((request, response, exception) ->
+                                response.setStatus(HttpServletResponse.SC_FORBIDDEN))
+                        .defaultAuthenticationEntryPointFor(
+                                // Avoid a protected /error dispatch turning API 401s into web-login redirects.
+                                (request, response, exception) -> response.setStatus(HttpServletResponse.SC_UNAUTHORIZED),
+                                new AntPathRequestMatcher("/api/**")
+                        )
+                        .defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/admin/login"),
+                                new org.springframework.security.web.util.matcher.OrRequestMatcher(
+                                        new AntPathRequestMatcher("/input-orders"), new AntPathRequestMatcher("/orders"),
+                                        new AntPathRequestMatcher("/InputOrders"), new AntPathRequestMatcher("/InputOrders.html")))
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/admin/login"),
+                                new AntPathRequestMatcher("/admin/**")
+                        )
+                        .defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/login"),
+                                org.springframework.security.web.util.matcher.AnyRequestMatcher.INSTANCE)
+                )
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .loginProcessingUrl("/login")
+                        .usernameParameter("username")
+                        .passwordParameter("password")
+                        .failureHandler(authenticationFailureHandler)
+                        .successHandler(authenticationSuccessHandler)
+                                                .permitAll()
+                )
+                .logout(logout -> logout
+                        .logoutSuccessUrl("/")
+                        .permitAll()
+                );
+
+        return http.build();
+    }
+
+}

@@ -1,0 +1,29 @@
+package org.example.onlinepossystem.customer.api;
+
+import java.time.LocalDateTime;
+
+public record CustomerAccount(
+        Long id,
+        String phone1,
+        String phone2,
+        String email,
+        String houseNumber,
+        String street,
+        String area,
+        String complexName,
+        LocalDateTime lastOrderedAt,
+        String preferredStore,
+        String city,
+        String postalCode,
+        String googlePlaceId,
+        String formattedAddress,
+        java.math.BigDecimal latitude,
+        java.math.BigDecimal longitude,
+        String province,
+        String country,
+        String firstName,
+        String lastName,
+        String role,
+        int accessLevel
+) {
+}

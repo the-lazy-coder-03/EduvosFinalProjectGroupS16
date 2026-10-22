@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <link rel="icon" href="data:,">
+    <title>Checkout — Pete’s Pizza</title>
+    <link rel="stylesheet" th:href="@{/css/address-autocomplete.css}">
+    <link rel="stylesheet" th:href="@{/css/checkout.css}">
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+</head>
+<body>
+<div id="checkoutDefaults"
+     th:data-full-name="${customerName ?: ''}"
+     th:data-email="${user != null ? user.email : ''}"
+     th:data-phone="${user != null ? user.phone1 : ''}"
+     th:data-house-number="${user != null ? user.houseNumber : ''}"
+     th:data-street="${user != null ? user.street : ''}"
+     th:data-area="${user != null ? user.area : ''}"
+     th:data-city="${user != null ? user.city : ''}"
+     th:data-postal-code="${user != null ? user.postalCode : ''}"
+     th:data-complex-name="${user != null ? user.complexName : ''}"
+     th:data-google-place-id="${user != null ? user.googlePlaceId : ''}"
+     th:data-formatted-address="${user != null ? user.formattedAddress : ''}"
+     th:data-latitude="${user != null ? user.latitude : ''}"
+     th:data-longitude="${user != null ? user.longitude : ''}"
+     th:data-province="${user != null ? user.province : ''}"
+     th:data-country="${user != null ? user.country : ''}"
+     th:data-google-maps-key="${googleMapsApiKey ?: ''}"
+     hidden></div>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <a class="brand" th:href="@{/}">Pete’s Pizza</a>
+        <nav class="top-actions" aria-label="Main navigation">
+            <a class="nav-link" th:href="@{/}">Home</a>
+            <a class="nav-link" th:href="@{/menu}">Menu</a>
+            <a class="nav-link nav-link-primary" th:href="@{/profile/edit}">My Account</a>
+        </nav>
+    </div>
+</header>
+
+<section class="page-heading">
+    <div class="page-heading-inner">
+        <a id="backToOrderTop" class="back-link" th:href="@{/order}">← Back to order</a>
+        <p class="eyebrow">Final step</p>
+        <h1>Checkout</h1>
+    </div>
+</section>
+
+<main class="checkout-layout">
+    <section class="checkout-column" aria-label="Checkout details">
+        <article class="checkout-card">
+            <div class="section-heading">
+                <span class="step-number">1</span>
+                <div>
+                    <h2>Order type</h2>
+                </div>
+            </div>
+            <div class="option-grid" role="group" aria-label="Order type">
+                <button type="button" class="select-option" id="deliveryButton" aria-pressed="false">
+                    <span class="option-mark" aria-hidden="true">D</span>
+                    <span><strong>Delivery</strong></span>
+                </button>
+                <button type="button" class="select-option" id="pickupButton" aria-pressed="false">
+                    <span class="option-mark" aria-hidden="true">C</span>
+                    <span><strong>Collection</strong></span>
+                </button>
+            </div>
+        </article>
+
+        <article class="checkout-card">
+            <div class="section-heading">
+                <span class="step-number">2</span>
+                <div>
+                    <h2>Customer details</h2>
+                </div>
+            </div>
+            <form id="checkoutForm" novalidate>
+                <input type="hidden" id="orderType" name="orderType">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fullName">Full name</label>
+                        <input id="fullName" name="fullName" type="text" autocomplete="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone number</label>
+                        <input id="phone" name="phone" type="tel" autocomplete="tel" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="email">Account email</label>
+                    <input id="email" name="email" type="email" autocomplete="email" readonly>
+                </div>
+                <div id="deliveryFields" hidden>
+                    <div id="checkoutAddressAutocomplete"
+                         class="address-autocomplete"
+                         data-address-autocomplete
+                         data-require="true"
+                         th:data-google-maps-key="${googleMapsApiKey ?: ''}"
+                         data-field-google-place-id="#googlePlaceId"
+                         data-field-formatted-address="#formattedAddress"
+                         data-field-latitude="#latitude"
+                         data-field-longitude="#longitude"
+                         data-field-house-number="#houseNumber"
+                         data-field-street="#street"
+                         data-field-area="#area"
+                         data-field-city="#city"
+                         data-field-postal-code="#postalCode"
+                         data-field-complex-name="#complexName"
+                         data-field-province="#province"
+                         data-field-country="#country">
+                        <label>Delivery address</label>
+                        <div class="address-widget" data-address-widget></div>
+                        <small class="address-status" data-address-status hidden></small>
+                    </div>
+                    <input type="hidden" id="googlePlaceId" name="googlePlaceId">
+                    <input type="hidden" id="formattedAddress" name="formattedAddress">
+                    <input type="hidden" id="latitude" name="latitude">
+                    <input type="hidden" id="longitude" name="longitude">
+                    <input type="hidden" id="province" name="province">
+                    <input type="hidden" id="country" name="country">
+                    <div class="form-row form-row-address">
+                        <div class="form-group">
+                            <label for="houseNumber">House / unit</label>
+                            <input id="houseNumber" name="houseNumber" type="text" autocomplete="address-line1">
+                        </div>
+                        <div class="form-group">
+                            <label for="street">Street</label>
+                            <input id="street" name="street" type="text" autocomplete="address-line1">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="area">Area / suburb</label>
+                            <input id="area" name="area" type="text" autocomplete="address-level3">
+                        </div>
+                        <div class="form-group">
+                            <label for="city">City</label>
+                            <input id="city" name="city" type="text" autocomplete="address-level2">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="postalCode">Postal code</label>
+                            <input id="postalCode" name="postalCode" type="text" autocomplete="postal-code">
+                        </div>
+                        <div class="form-group">
+                            <label for="complexName">Complex / building <span>(optional)</span></label>
+                            <input id="complexName" name="complexName" type="text" autocomplete="address-line2">
+                        </div>
+                    </div>
+                    <fieldset class="estate-access">
+                        <legend>Estate access</legend>
+                        <div class="form-group">
+                            <label for="gateAccessCode">Gate access code <span>(optional)</span></label>
+                            <input id="gateAccessCode" name="gateAccessCode" type="text" maxlength="64"
+                                   pattern="[A-Za-z0-9 #*]*" autocomplete="off" spellcheck="false">
+                        </div>
+                    </fieldset>
+                </div>
+            </form>
+        </article>
+
+        <article class="checkout-card payment-card">
+            <div class="section-heading">
+                <span class="step-number">3</span>
+                <div>
+                    <h2>Payment</h2>
+                </div>
+            </div>
+            <div class="payment-option" aria-label="Pay on fulfilment">
+                <span class="radio-selected" aria-hidden="true"></span>
+                <div>
+                    <strong id="paymentLabel">Choose an order type</strong>
+                    <small>No online payment details are required.</small>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <aside class="order-summary" aria-labelledby="summaryTitle">
+        <div class="summary-header">
+            <div><p class="eyebrow">Your cart</p><h2 id="summaryTitle">Order summary</h2></div>
+            <a id="editOrderLink" th:href="@{/order}">Edit order</a>
+        </div>
+        <div id="checkoutItems" class="checkout-items"></div>
+        <div id="emptyCart" class="empty-cart" hidden>
+            <strong>Your cart is empty</strong>
+            <p>Return to the order page and add something delicious.</p>
+            <a class="button button-secondary" th:href="@{/order}">Start an order</a>
+        </div>
+        <div id="summaryTotals" class="summary-totals">
+            <div class="summary-line"><span>Items</span><span id="itemCount">0</span></div>
+            <div class="summary-total"><span>Total</span><span id="orderTotal">R0.00</span></div>
+        </div>
+        <div id="checkoutNotice" class="checkout-notice" role="status" aria-live="polite" hidden></div>
+        <button class="button button-primary place-order" id="placeOrderButton" type="button" disabled>Place order</button>
+    </aside>
+</main>
+
+<script th:src="@{/js/address-autocomplete.js}" defer></script>
+<script th:src="@{/js/checkout.js}" defer></script>
+</body>
+</html>

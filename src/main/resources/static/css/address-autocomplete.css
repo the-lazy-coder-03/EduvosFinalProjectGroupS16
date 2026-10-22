@@ -1,0 +1,150 @@
+.address-autocomplete {
+    position: relative;
+    display: grid;
+    gap: 8px;
+    margin: 10px 0;
+}
+
+.address-autocomplete label {
+    color: var(--color-blue-dark);
+    font-weight: 700;
+}
+
+.address-widget {
+    position: relative;
+    min-height: 48px;
+}
+
+.address-search-control {
+    position: relative;
+    width: 100%;
+}
+
+.address-search-input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 48px;
+    margin: 0 !important;
+    padding: 11px 42px 11px 14px;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 2px solid var(--color-blue);
+    border-radius: 12px;
+    font: inherit;
+    outline: none;
+    appearance: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.address-search-input:focus {
+    border-color: var(--color-blue-dark);
+    box-shadow: 0 0 0 3px rgba(var(--color-blue-rgb), .14);
+}
+
+.address-search-input:disabled {
+    color: var(--color-muted);
+    background: var(--color-page);
+    cursor: not-allowed;
+}
+
+.address-search-control::after {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 12px;
+    height: 12px;
+    content: "";
+    border: 2px solid var(--color-blue);
+    border-radius: 50%;
+    box-shadow: 6px 6px 0 -5px var(--color-blue);
+    pointer-events: none;
+}
+
+.address-results {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 5px);
+    right: 0;
+    left: 0;
+    max-height: min(300px, 52vh);
+    margin: 0;
+    padding: 5px;
+    overflow-y: auto;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-blue-soft);
+    border-radius: 12px;
+    box-shadow: 0 14px 30px rgba(var(--color-text-rgb), .18);
+    list-style: none;
+}
+
+.address-results[hidden] {
+    display: none;
+}
+
+.address-result {
+    padding: 11px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: .94rem;
+    line-height: 1.35;
+}
+
+.address-result:hover,
+.address-result[aria-selected="true"] {
+    color: var(--color-blue-dark);
+    background: var(--color-blue-tint);
+}
+
+.address-results-empty {
+    padding: 12px;
+    color: var(--color-muted);
+    font-size: .9rem;
+    line-height: 1.4;
+}
+
+.address-attribution {
+    padding: 7px 10px 5px;
+    color: var(--color-muted);
+    border-top: 1px solid var(--color-border);
+    font-size: .78rem;
+    font-weight: 400;
+    letter-spacing: .01em;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.address-status {
+    color: var(--color-text-secondary);
+    font-size: .9rem;
+    line-height: 1.35;
+}
+
+.address-autocomplete[data-address-state="loading"] .address-status {
+    color: var(--color-blue);
+}
+
+.address-autocomplete[data-address-state="verified"] .address-status {
+    color: var(--color-success);
+}
+
+.address-autocomplete[data-address-state="invalid"] .address-status,
+.address-autocomplete[data-address-state="error"] .address-status {
+    color: var(--color-error);
+}
+
+@media (max-width: 520px) {
+    .address-search-input {
+        min-height: 48px;
+        font-size: 16px;
+    }
+
+    .address-results {
+        max-height: 44vh;
+    }
+
+    .address-result {
+        min-height: 44px;
+        padding: 12px;
+    }
+}
