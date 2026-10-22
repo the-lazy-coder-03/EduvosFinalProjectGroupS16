@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+    <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar"
+        style="@style/Widget.App.Toolbar" android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize" app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="Special" />
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp">
+            <ProgressBar android:id="@+id/progress" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:layout_gravity="center_horizontal" />
+            <TextView android:id="@+id/tvError" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:visibility="gone" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnRetry" style="@style/Widget.App.SecondaryButton"
+                android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Try again" android:visibility="gone"/>
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Build your bundle"
+                android:textAppearance="@style/Text.Page" android:layout_marginBottom="8dp"/>
+            <TextView android:id="@+id/tvBasePrice" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="20sp" android:textStyle="bold" android:textColor="@color/terracotta" android:layout_marginBottom="8dp"/>
+            <TextView android:id="@+id/tvNotice" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:background="@color/steel_blue_soft" android:padding="12dp" android:visibility="gone"
+                android:accessibilityLiveRegion="polite" android:textColor="@color/gunmetal"/>
+            <TextView android:id="@+id/tvDescription" android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+            <LinearLayout android:id="@+id/slots" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical" />
+            <LinearLayout android:id="@+id/addons" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical" />
+        </LinearLayout>
+    </ScrollView>
+    <include layout="@layout/view_add_bar" />
+</LinearLayout>

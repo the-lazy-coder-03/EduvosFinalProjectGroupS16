@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_margin="8dp"
+    app:cardCornerRadius="16dp" app:cardBackgroundColor="?attr/colorSurface" app:cardElevation="0dp" app:strokeColor="@color/paper_variant" app:strokeWidth="1dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <TextView android:id="@+id/tvName" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="18sp" android:textStyle="bold"/>
+        <TextView android:id="@+id/tvDetail" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:lineSpacingExtra="3dp" android:textColor="?attr/colorOutline" android:textSize="14sp"/>
+        <TextView android:id="@+id/tvNotes" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+            android:textSize="14sp" android:textColor="?attr/colorOnSurface"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnEdit" style="@style/Widget.App.SecondaryTextButton"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" android:minHeight="48dp" android:text="Edit"/>
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnRemove" style="@style/Widget.App.SecondaryTextButton"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" android:minHeight="48dp" android:text="Remove" android:textColor="@color/steel_blue"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnMinus" style="@style/Widget.App.SecondaryTonalButton"
+                android:layout_width="48dp" android:layout_height="48dp" android:insetLeft="0dp" android:insetRight="0dp" android:insetTop="0dp" android:insetBottom="0dp" android:minWidth="0dp" android:padding="0dp" android:text="−" android:textSize="20sp"/>
+            <TextView android:id="@+id/tvQty" android:layout_width="36dp" android:layout_height="wrap_content" android:gravity="center" android:textStyle="bold"/>
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnPlus" style="@style/Widget.App.SecondaryTonalButton"
+                android:layout_width="48dp" android:layout_height="48dp" android:insetLeft="0dp" android:insetRight="0dp" android:insetTop="0dp" android:insetBottom="0dp" android:minWidth="0dp" android:padding="0dp" android:text="+" android:textSize="20sp"/>
+            <TextView android:id="@+id/tvLinePrice" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:layout_marginStart="8dp" android:gravity="end" android:textSize="18sp" android:textStyle="bold"/>
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

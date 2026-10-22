@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.DeliveryApp" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="materialButtonStyle">@style/Widget.App.PrimaryButton</item>
+        <item name="materialButtonOutlinedStyle">@style/Widget.App.SecondaryButton</item>
+        <item name="colorPrimary">@color/brand_red_light</item>
+        <item name="colorOnPrimary">@color/surface</item>
+        <item name="colorPrimaryContainer">@color/brand_red_dark</item>
+        <item name="colorOnPrimaryContainer">@color/surface</item>
+        <item name="colorSecondary">@color/brand_blue_light</item>
+        <item name="colorOnSecondary">@color/surface</item>
+        <item name="colorSecondaryContainer">@color/brand_blue_dark</item>
+        <item name="colorOnSecondaryContainer">@color/surface</item>
+        <item name="colorTertiary">@color/neutral_light</item>
+        <item name="colorSurface">@color/neutral_dark</item>
+        <item name="colorOnSurface">@color/page_background</item>
+        <item name="colorSurfaceVariant">@color/neutral_primary</item>
+        <item name="colorOnSurfaceVariant">@color/neutral_border</item>
+        <item name="colorOutline">@color/neutral_light</item>
+        <item name="colorError">@color/brand_red_soft</item>
+        <item name="android:colorBackground">@color/neutral_dark</item>
+        <item name="android:textColorPrimary">@color/page_background</item>
+        <item name="android:statusBarColor">@color/brand_blue_dark</item>
+        <item name="android:navigationBarColor">@color/neutral_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+    </style>
+</resources>

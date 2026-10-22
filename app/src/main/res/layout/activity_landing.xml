@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:paddingBottom="32dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:background="@color/gunmetal" android:orientation="vertical"
+            android:paddingStart="24dp" android:paddingEnd="24dp" android:paddingTop="32dp" android:paddingBottom="42dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Pete’s Pizza" android:textColor="@color/terracotta"
+                android:textSize="36sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginTop="0dp" android:text="Kenridge &amp; Uitzicht"
+                android:textColor="@color/white" android:textSize="16sp" />
+            <TextView android:id="@+id/tvWelcome" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="20dp"
+                android:textColor="@color/white" android:textSize="24sp"
+                android:textStyle="bold" android:visibility="gone" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" android:text="Fresh pizza, made for your neighbourhood."
+                android:textColor="@color/white_85" android:textSize="15sp" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_weight="1" android:gravity="center" android:orientation="vertical"
+            android:paddingTop="16dp" android:paddingBottom="16dp">
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginStart="20dp" android:layout_marginEnd="20dp"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardCornerRadius="18dp" app:cardElevation="4dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="20dp">
+                <LinearLayout android:id="@+id/guestActions" android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <com.google.android.material.button.MaterialButton android:id="@+id/btnViewMenu"
+                        android:layout_width="match_parent" android:layout_height="56dp"
+                        android:text="View menu" android:textStyle="bold" />
+                    <com.google.android.material.button.MaterialButton
+                        style="@style/Widget.App.SecondaryButton"
+                        android:id="@+id/btnLogin" android:layout_width="match_parent"
+                        android:layout_height="56dp" android:layout_marginTop="8dp"
+                        android:text="Login" android:textStyle="bold" />
+                    <com.google.android.material.button.MaterialButton
+                        style="@style/Widget.App.SecondaryButton"
+                        android:id="@+id/btnRegister" android:layout_width="match_parent"
+                        android:layout_height="56dp" android:layout_marginTop="8dp"
+                        android:text="Sign up" android:textStyle="bold" />
+                </LinearLayout>
+                <LinearLayout android:id="@+id/memberActions" android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" android:visibility="gone">
+                    <com.google.android.material.button.MaterialButton android:id="@+id/btnOrder"
+                        android:layout_width="match_parent" android:layout_height="56dp"
+                        android:text="View menu &amp; order" android:textStyle="bold" />
+                    <com.google.android.material.button.MaterialButton
+                        style="@style/Widget.App.SecondaryButton"
+                        android:id="@+id/btnLogout" android:layout_width="match_parent"
+                        android:layout_height="56dp" android:layout_marginTop="8dp"
+                        android:text="Logout" android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+        <LinearLayout android:id="@+id/branchChoice" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp" android:layout_marginTop="24dp"
+            android:orientation="vertical" android:visibility="gone">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Choose your branch"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" android:text="Menus and prices can vary by branch."
+                android:textColor="?attr/colorOnSurfaceVariant" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" android:orientation="horizontal">
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.App.SecondaryButton"
+                    android:id="@+id/btnKenridge" android:layout_width="0dp"
+                    android:layout_height="56dp" android:layout_weight="1"
+                    android:text="Kenridge" />
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.App.SecondaryButton"
+                    android:id="@+id/btnUitzicht" android:layout_width="0dp"
+                    android:layout_height="56dp" android:layout_marginStart="8dp"
+                    android:layout_weight="1" android:text="Uitzicht" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginStart="20dp" android:layout_marginEnd="20dp"
+            android:layout_marginTop="24dp" android:orientation="vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Find us" android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textStyle="bold" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.App.SecondaryTextButton"
+                    android:id="@+id/btnKenridgeMap" android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="Kenridge location" android:textColor="@color/steel_blue" />
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.App.SecondaryTextButton"
+                    android:id="@+id/btnUitzichtMap" android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_marginStart="8dp"
+                    android:layout_weight="1" android:text="Uitzicht location"
+                    android:textColor="@color/steel_blue" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
